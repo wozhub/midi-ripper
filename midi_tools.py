@@ -1,6 +1,13 @@
-NOTAS = [ 'C', 'Csharp', 'D', 'Dsharp', 'E', 'F', 'Fsharp',
-          'G', 'Gsharp', 'A', 'Asharp', 'B' ]
-acordes = {
+#!/usr/bin/env python3
+# coding: utf-8
+
+# Midi
+from mido import Message
+from time import sleep
+
+NOTAS = ['C', 'Csharp', 'D', 'Dsharp', 'E', 'F', 'Fsharp', 'G', 'Gsharp', 'A', 'Asharp', 'B']
+
+ACORDES = {
     'maj': [0, 4, 7],
     'maj-inv': [-5, 0, 4],  # una inversion mas "abierta"
     'min': [0, 3, 7],
@@ -11,7 +18,8 @@ acordes = {
     'sus4-inv': [-5, 0, 5],
 }
 
-def playChord(midi_out, note, chord, sustain):
+
+def play_chord(midi_out, note, chord, sustain):
     notes = [note+x for x in chord ]
 
     for n in notes:
@@ -27,4 +35,9 @@ def playChord(midi_out, note, chord, sustain):
         midi_out.send(msg)
     """
 
-
+def play_note(midi_out, note, velocity, sustain):
+    msg_on = Message('note_on', note=note, velocity=velocity)
+    msg_off = Message('note_off', note=note, velocity=velocity)
+    midi_out.send(msg_on)
+    sleep(sustain)
+    midi_out.send(msg_off)
