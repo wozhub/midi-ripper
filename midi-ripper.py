@@ -14,7 +14,7 @@ from sys import exit
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
 
 # Tools
-from midi_tools import play_note, play_chord
+from midi_tools import play_note, play_chord, ACORDES, NOTAS
 
 #print(sd.query_devices()[0].get('name'))
 SOUND_DEVICES = sd.query_devices()
@@ -35,7 +35,8 @@ EPILOG = """
 
 parser = ArgumentParser(formatter_class=RawDescriptionHelpFormatter, epilog=EPILOG)
 parser.add_argument('--sound-dev', required=True, type=int, choices=range(len(SOUND_DEVICES_NAMES)))
-parser.add_argument('--samplerate', default=44100)
+#parser.add_argument('--samplerate', default=44100)
+parser.add_argument('--samplerate', default=48000)
 parser.add_argument('--channels', type=int, default=1)   # Volcas son MONO!
 parser.add_argument('--midi-dev', required=True, type=int, choices=range(len(MIDI_DEVICES_NAMES)))
 parser.add_argument('--vsens', action='store_true')  # Velocity Sensitive
@@ -45,6 +46,7 @@ parser.add_argument('--decay-time', type=int, default=3)
 parser.add_argument('--lowest-pitch', type=int, default=24)
 parser.add_argument('--highest-pitch', type=int, default=96)
 parser.add_argument('--pitch-step', default=1)
+parser.add_argument('--chords', action='store_true')
 parser.add_argument('--dry', action='store_true')
 
 args = parser.parse_args()
@@ -67,41 +69,56 @@ sleep(5)  # Espero
 notas = range(args.lowest_pitch, args.highest_pitch, args.pitch_step)
 DURATION = args.sustain_time + args.decay_time
 
-#
-# Por cada nota midi
-for n in range(1, 128, 1):
+if args.chords:
+    for n in range(args.lowest_pitch, args.highest_pitch):
+        for c in ACORDES:
+            FILENAME = "/tmp/midi-ripper/%s-%s-%s.wav" % (n, NOTAS[n % len(NOTAS)], c)
 
-
-    if args.vsens:
-        vs = [24, 64, 127] # Tres volumenes
-    else:
-        vs = [127, ]
-
-    for v in vs:
-        print("| %s (%s) |" % (n, v))
-
-        FILENAME = "/tmp/midi-ripper/n%s-v%s.wav" % (n, v)
-
-        # Si no me pidieron grabarla, genero un archivo vacío,
-        # para que sea más fácil importar los samples en ableton
-        if n not in notas:
+            print("Grabando:", FILENAME)
             if not args.dry:
-                open(FILENAME, 'w').close()
-            continue
+                record = sd.rec(DURATION * args.samplerate) # Begin recording
+                sleep(0.002)
 
-        if not args.dry:
-            record = sd.rec(DURATION * args.samplerate) # Begin recording
+            play_chord(outport, n, ACORDES[c], args.sustain_time)
+
+            sleep(args.decay_time)
+            sd.wait()
+
+            if not args.dry:
+                sf.write(FILENAME, record, args.samplerate)
+else:
+    #
+    # Por cada nota midi
+    for n in range(1, 128, 1):
+        if args.vsens:
+            vs = [24, 64, 127] # Tres volumenes
+        else:
+            vs = [127, ]
+    
+        for v in vs:
+            print("| %s (%s) |" % (n, v))
+
+            FILENAME = "/tmp/midi-ripper/n%s-v%s.wav" % (n, v)
+
+            # Si no me pidieron grabarla, genero un archivo vacío,
+            # para que sea más fácil importar los samples en ableton
+            if n not in notas:
+                if not args.dry:
+                    open(FILENAME, 'w').close()
+                continue
+
+            if not args.dry:
+                record = sd.rec(DURATION * args.samplerate) # Begin recording
+                sleep(0.002)
+
+            play_note(outport, n, v, args.sustain_time)
+            sleep(args.decay_time)
+            sd.wait()
             sleep(0.002)
 
-        play_note(outport, n, v, args.sustain_time)
-        sleep(args.decay_time)
-        sd.wait()
-        sleep(0.002)
-
-        if not args.dry:
-            sf.write(FILENAME, record, args.samplerate)
-        # sleep(1)
-
+            if not args.dry:
+                sf.write(FILENAME, record, args.samplerate)
+            # sleep(1)
 
 exit()
 
@@ -112,16 +129,4 @@ sleep(5)
 sustain = 5
 duration = 7
 
-for n in range(60, 72):
-    for c in acordes:
-        nombre="%s-%s-%s" % (n, NOTAS[n % len(NOTAS)], c)
-
-        print("Grabando:", nombre)
-        record = sd.rec(duration * samplerate) # Begin recording
-        playChord(outport, n, acordes[c], sus)
-
-        #sleep(duration-sustain-0.5)
-        sd.wait()
-        #
-        sf.write("/tmp/streichfett/bass-%s.wav" % nombre, record, samplerate)
 """
