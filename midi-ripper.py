@@ -11,10 +11,14 @@ import soundfile as sf
 # Utils
 from time import sleep
 from sys import exit
+from os.path import dirname, realpath
+from shutil import copyfile
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
 
 # Tools
 from midi_tools import play_note, play_chord, ACORDES, NOTAS
+
+EMPTY_WAV = "{}/empty.wav".format(dirname(realpath(__file__)))
 
 #print(sd.query_devices()[0].get('name'))
 SOUND_DEVICES = sd.query_devices()
@@ -94,7 +98,7 @@ else:
             vs = [24, 64, 127] # Tres volumenes
         else:
             vs = [127, ]
-    
+
         for v in vs:
             print("| %s (%s) |" % (n, v))
 
@@ -104,7 +108,8 @@ else:
             # para que sea más fácil importar los samples en ableton
             if n not in notas:
                 if not args.dry:
-                    open(FILENAME, 'w').close()
+                    # open(FILENAME, 'w').close()
+                    copyfile(EMPTY_WAV, FILENAME)
                 continue
 
             if not args.dry:
