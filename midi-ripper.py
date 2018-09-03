@@ -5,23 +5,24 @@
 from mido import open_output, get_output_names
 
 # Audio
-import sounddevice as sd
+import sounddevice as SOUND_DEVICE
 import soundfile as sf
 
 # Utils
 from time import sleep
 from sys import exit
-from os.path import dirname, realpath
+from colorama import Fore, Style
+
 from shutil import copyfile
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
 
 # Tools
 from midi_tools import play_note, play_chord, ACORDES, NOTAS
+from rip_tools import rip_note, EMPTY_WAV
 
-EMPTY_WAV = "{}/empty.wav".format(dirname(realpath(__file__)))
 
-#print(sd.query_devices()[0].get('name'))
-SOUND_DEVICES = sd.query_devices()
+#print(SOUND_DEVICE.query_devices()[0].get('name'))
+SOUND_DEVICES = SOUND_DEVICE.query_devices()
 SOUND_DEVICES_NAMES = ["%d: %s" % (SOUND_DEVICES.index(x), x.get('name')) for x in SOUND_DEVICES]
 
 MIDI_DEVICES_NAMES = get_output_names()
@@ -52,25 +53,31 @@ parser.add_argument('--highest-pitch', type=int, default=96)
 parser.add_argument('--pitch-step', default=1)
 parser.add_argument('--chords', action='store_true')
 parser.add_argument('--dry', action='store_true')
+parser.add_argument('--continue-on-clip', action='store_true')
 
 args = parser.parse_args()
-# print(args)
+print(args)
 
 print("MIDI DEVICE: ", MIDI_DEVICES_NAMES[args.midi_dev])
 print("AUDIO-DEVICE: ", SOUND_DEVICES_NAMES[args.sound_dev])
 
-sd.default.samplerate = args.samplerate
-sd.default.device = SOUND_DEVICES[args.sound_dev].get('name')
-sd.default.channels = args.channels
-outport = open_output(get_output_names()[args.midi_dev])
+SOUND_DEVICE.default.samplerate = args.samplerate
+SOUND_DEVICE.default.device = SOUND_DEVICES[args.sound_dev].get('name')
+SOUND_DEVICE.default.channels = args.channels
+# SOUND_DEVICE.default.dtype =
+
+MIDI_OUT = open_output(get_output_names()[args.midi_dev])
 
 print("Waiting for MIDI silence")
-outport.reset()
+MIDI_OUT.reset()
 sleep(5)  # Espero
 
 #
-#
-notas = range(args.lowest_pitch, args.highest_pitch, args.pitch_step)
+MIDI_NOTES = range(args.lowest_pitch, args.highest_pitch, args.pitch_step)
+if args.vsens:
+    MIDI_VELOCITIES = [24, 64, 127] # Tres volumenes
+else:
+    MIDI_VELOCITIES = [127, ]
 DURATION = args.sustain_time + args.decay_time
 
 if args.chords:
@@ -80,46 +87,41 @@ if args.chords:
 
             print("Grabando:", FILENAME)
             if not args.dry:
-                record = sd.rec(DURATION * args.samplerate) # Begin recording
+                record = SOUND_DEVICE.rec(DURATION * args.samplerate) # Begin recording
                 sleep(0.002)
 
-            play_chord(outport, n, ACORDES[c], args.sustain_time)
+            play_chord(MIDI_OUT, n, ACORDES[c], args.sustain_time)
 
             sleep(args.decay_time)
-            sd.wait()
+            SOUND_DEVICE.wait()
 
             if not args.dry:
                 sf.write(FILENAME, record, args.samplerate)
 else:
     #
     # Por cada nota midi
-    for n in range(1, 128, 1):
-        if args.vsens:
-            vs = [24, 64, 127] # Tres volumenes
-        else:
-            vs = [127, ]
+    for MIDI_NOTE in range(1, 128, 1):
+        for MIDI_VEL in MIDI_VELOCITIES:
+            print("Recording: %s (%s)" % (MIDI_NOTE, MIDI_VEL))
 
-        for v in vs:
-            print("| %s (%s) |" % (n, v))
+            FILENAME = "/tmp/midi-ripper/n{note:02d}-v{vel:02d}.wav"\
+                .format(note=MIDI_NOTE, vel=MIDI_VEL)
 
-            FILENAME = "/tmp/midi-ripper/n%s-v%s.wav" % (n, v)
-
-            # Si no me pidieron grabarla, genero un archivo vacío,
-            # para que sea más fácil importar los samples en ableton
-            if n not in notas:
-                if not args.dry:
-                    # open(FILENAME, 'w').close()
-                    copyfile(EMPTY_WAV, FILENAME)
+            # Las notas que no me pidieron grabar
+            if MIDI_NOTE not in MIDI_NOTES and not args.dry:
+                copyfile(EMPTY_WAV, FILENAME)
                 continue
 
-            if not args.dry:
-                record = sd.rec(DURATION * args.samplerate) # Begin recording
-                sleep(0.002)
+            record = rip_note(SOUND_DEVICE, args.samplerate, \
+                              MIDI_OUT, MIDI_NOTE, MIDI_VEL, \
+                              args.sustain_time, args.decay_time)
 
-            play_note(outport, n, v, args.sustain_time)
-            sleep(args.decay_time)
-            sd.wait()
-            sleep(0.002)
+            if record.min() < -0.9 or record.max() > 0.9:
+                print(Fore.RED + "Recording might have clippins!" + Style.RESET_ALL)
+                if not args.continue_on_clip:
+                    exit(1)
+
+            print("Recorded: {}, {}, {}".format(FILENAME, record.min(), record.max()))
 
             if not args.dry:
                 sf.write(FILENAME, record, args.samplerate)
@@ -128,7 +130,7 @@ else:
 exit()
 
 """
-outport.reset()
+MIDI_OUT.reset()
 sleep(5)
 
 sustain = 5

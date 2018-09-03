@@ -15,4 +15,6 @@ pip install python-rtmidi mido sounddevice soundfile numpy
 ## TODO
 
 - [ ] Platform agnostic temporary folder management
-- [ ] Recording test to check input volume
+- [x] Recording test to check input volume
+- [ ] Check for silence before the recording
+- [ ] Crop silence at the end of the recording
