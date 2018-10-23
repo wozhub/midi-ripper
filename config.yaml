@@ -1,0 +1,22 @@
+sound-device:
+  #  name: "USB Audio CODEC: - (hw:1,0)"
+  name: "Scarlett 2i4 USB: Audio (hw:1,0)"
+  channels: 2 
+  sample-rate: 48000
+  # sample-rate: 96000
+midi-device:
+  # name: "JD-Xi:JD-Xi MIDI 1 24:0"
+  name: "Scarlett 2i4 USB:Scarlett 2i4 USB MIDI 1 20:0"
+  # Mido numbers channels 0 to 15 instead of 1 to 16.
+  # This makes them easier to work with in Python but you may want to add and subtract 1 when communicating with the user.
+  channel: 0
+  velocities:
+      - 100
+  duration: 15
+  sustain-time: 10
+  decay-time: 5
+  # lowest-pitch: 24
+  lowest-pitch: 36
+  # highest-pitch: 88
+  highest-pitch: 76
+  pitch-step: 1

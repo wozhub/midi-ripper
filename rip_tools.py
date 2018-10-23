@@ -11,14 +11,16 @@ WAIT_START = 0.002
 WAIT_END = 0.002
 
 
-def rip_note(sound_device, samplerate, m_port, m_note, m_vel, m_sustain, m_duration):
+def rip_note(sound_device, sound_config, midi_device, midi_config, midi_note, midi_vel):
     """
         Given a midi_note, plays it and saves input audio it to a file
     """
 
-    record = sound_device.rec(m_duration * samplerate) # Begin recording
+    record_time = midi_config['duration'] * sound_config['sample-rate']
+    record = sound_device.rec(record_time) # Begin recording
     sleep(WAIT_START)
-    play_note(m_port, m_note, m_vel, m_sustain)
+    # TODO: quizá play_note podría tomar como argumento MIDI-CONFIG
+    play_note(midi_device, midi_config['channel'], midi_note, midi_vel, midi_config['sustain-time'])
     #sleep(m_duration)
     sound_device.wait()
     #sleep(WAIT_END)

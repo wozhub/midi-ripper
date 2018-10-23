@@ -5,6 +5,8 @@
 from mido import Message
 from time import sleep
 
+#from IPython import embed
+
 NOTAS = ['C', 'Csharp', 'D', 'Dsharp', 'E', 'F', 'Fsharp', 'G', 'Gsharp', 'A', 'Asharp', 'B']
 
 ACORDES = {
@@ -35,9 +37,12 @@ def play_chord(midi_out, note, chord, sustain):
         midi_out.send(msg)
     """
 
-def play_note(midi_out, note, velocity, sustain):
-    msg_on = Message('note_on', note=note, velocity=velocity)
-    msg_off = Message('note_off', note=note, velocity=velocity)
+def play_note(midi_out, channel, note, velocity, sustain):
+    msg_on = Message('note_on', channel=channel, note=note, velocity=velocity)
+    msg_off = Message('note_off', channel=channel, note=note, velocity=velocity)
+    #msg_on = Message('note_on', note=note, velocity=velocity)
+    #msg_off = Message('note_off', note=note, velocity=velocity)
+    #embed()
     midi_out.send(msg_on)
     sleep(sustain)
     midi_out.send(msg_off)

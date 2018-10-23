@@ -18,3 +18,5 @@ pip install python-rtmidi mido sounddevice soundfile numpy
 - [x] Recording test to check input volume
 - [ ] Check for silence before the recording
 - [ ] Crop silence at the end of the recording
+- [ ] Samples name format in config
+- [ ] Record out folder in config
