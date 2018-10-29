@@ -14,6 +14,8 @@ pip install python-rtmidi mido sounddevice soundfile numpy
 
 ## TODO
 
+- [x] Support for picking among default MIDI notes range
+- [ ] Give more feedback about the whole process 
 - [ ] Platform agnostic temporary folder management
 - [x] Recording test to check input volume
 - [ ] Check for silence before the recording

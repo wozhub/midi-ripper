@@ -1,3 +1,4 @@
+temp-dir: /tmp/midi-ripper
 sound-device:
   #  name: "USB Audio CODEC: - (hw:1,0)"
   name: "Scarlett 2i4 USB: Audio (hw:1,0)"
@@ -15,8 +16,14 @@ midi-device:
   duration: 15
   sustain-time: 10
   decay-time: 5
-  # lowest-pitch: 24
-  lowest-pitch: 36
-  # highest-pitch: 88
-  highest-pitch: 76
+  pitch-ranges:  # http://newt.phys.unsw.edu.au/jw/notes.html
+    bass:
+      lowest-pitch: 21    # A0
+      highest-pitch: 60   # C4
+    piano:
+      lowest-pitch: 21    # A0
+      highest-pitch: 107  # B7
+    synth:
+      lowest-pitch: 36    # C2
+      highest-pitch: 88   # E6
   pitch-step: 1

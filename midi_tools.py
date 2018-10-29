@@ -2,10 +2,13 @@
 # coding: utf-8
 
 # Midi
-from mido import Message
+from mido import Message, open_output, get_output_names
 from time import sleep
 
 #from IPython import embed
+
+# Config
+from config import CONFIG
 
 NOTAS = ['C', 'Csharp', 'D', 'Dsharp', 'E', 'F', 'Fsharp', 'G', 'Gsharp', 'A', 'Asharp', 'B']
 
@@ -20,12 +23,29 @@ ACORDES = {
     'sus4-inv': [-5, 0, 5],
 }
 
+MIDI_DEVICE = None
+MIDI_DEVICES_NAMES = get_output_names()
+MIDI_DEVICES_LIST = ["%d: %s" % (MIDI_DEVICES_NAMES.index(x), x) for x in MIDI_DEVICES_NAMES]
 
-def play_chord(midi_out, note, chord, sustain):
-    notes = [note+x for x in chord ]
 
-    for n in notes:
-        msg = Message('note_on', note=n, velocity=127)
+def set_mididevice():
+    """  See if requested MIDI DEVICE is available """
+    global MIDI_DEVICE
+
+    if not CONFIG['midi-device']['name'] in MIDI_DEVICES_NAMES:
+        print("MIDI DEVICE NOT AVAILABLE (%s)" % CONFIG['midi-device']['name'])
+        return False
+
+    MIDI_DEVICE = open_output(CONFIG['midi-device']['name'])
+    return True
+
+
+def play_chord(midi_out, root_note, chord, sustain):
+    """ Plays chords (multiple notes) """
+    notes = [root_note+x for x in chord]
+
+    for note in notes:
+        msg = Message('note_on', note=note, velocity=127)
         midi_out.send(msg)
 
     sleep(sustain)
@@ -37,7 +57,9 @@ def play_chord(midi_out, note, chord, sustain):
         midi_out.send(msg)
     """
 
+
 def play_note(midi_out, channel, note, velocity, sustain):
+    """ Plays notes """
     msg_on = Message('note_on', channel=channel, note=note, velocity=velocity)
     msg_off = Message('note_off', channel=channel, note=note, velocity=velocity)
     #msg_on = Message('note_on', note=note, velocity=velocity)
