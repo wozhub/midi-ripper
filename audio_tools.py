@@ -27,6 +27,10 @@ SOUND_DEVICES_LIST = ["%d: %s" % (SOUND_DEVICES.index(x), x.get('name')) for x i
 
 def set_sounddevice():
     """  See if the requested sound device is available """
+    if CONFIG is None:
+        # TODO: Should raise error
+        print("Must load config first!")
+        return False
 
     if not CONFIG['sound-device']['name'] in SOUND_DEVICES_NAMES:
         print("SOUND DEVICE NOT AVAILABLE (%s)" % CONFIG['sound-device']['name'])

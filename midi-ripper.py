@@ -29,6 +29,8 @@ from IPython import embed
 # Config
 from config import load_config, CONFIG
 
+# Logging
+from logger import load_logger, LOGGER
 
 
 # EPILOG

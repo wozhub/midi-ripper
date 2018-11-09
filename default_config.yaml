@@ -27,3 +27,6 @@ midi-device:
       lowest-pitch: 36    # C2
       highest-pitch: 88   # E6
   pitch-step: 1
+logger:
+  name: "midi-ripper"
+  filename: "midi-ripper.log"
