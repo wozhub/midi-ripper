@@ -8,7 +8,7 @@ from time import sleep
 #from IPython import embed
 
 # Config
-from config import CONFIG
+import config
 
 NOTAS = ['C', 'Csharp', 'D', 'Dsharp', 'E', 'F', 'Fsharp', 'G', 'Gsharp', 'A', 'Asharp', 'B']
 
@@ -23,20 +23,20 @@ ACORDES = {
     'sus4-inv': [-5, 0, 5],
 }
 
-MIDI_DEVICE = None
-MIDI_DEVICES_NAMES = get_output_names()
-MIDI_DEVICES_LIST = ["%d: %s" % (MIDI_DEVICES_NAMES.index(x), x) for x in MIDI_DEVICES_NAMES]
+DEVICE = None
+DEVICES_NAMES = get_output_names()
+DEVICES_LIST = ["%d: %s" % (DEVICES_NAMES.index(x), x) for x in DEVICES_NAMES]
 
 
-def set_mididevice():
+def load():
     """  See if requested MIDI DEVICE is available """
-    global MIDI_DEVICE
+    global DEVICE
 
-    if not CONFIG['midi-device']['name'] in MIDI_DEVICES_NAMES:
-        print("MIDI DEVICE NOT AVAILABLE (%s)" % CONFIG['midi-device']['name'])
+    if not config.CONFIG['midi-device']['name'] in DEVICES_NAMES:
+        print("MIDI DEVICE NOT AVAILABLE (%s)" % config.CONFIG['midi-device']['name'])
         return False
 
-    MIDI_DEVICE = open_output(CONFIG['midi-device']['name'])
+    DEVICE = open_output(config.CONFIG['midi-device']['name'])
     return True
 
 

@@ -15,23 +15,25 @@ from sys import exit
 from colorama import Fore, Style
 from shutil import copyfile
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
+from pathlib import Path
 
 # Midi Tools
-from midi_tools import MIDI_DEVICE, MIDI_DEVICES_LIST, MIDI_DEVICES_NAMES, ACORDES, NOTAS  # Globals
-from midi_tools import set_mididevice, play_chord
+#from midi import midi.DEVICE, midi.DEVICES_LIST, midi.DEVICES_NAMES, ACORDES, NOTAS  # Globals
+#from midi import set_mididevice, play_chord
+import midi
 
 # Audio Tools
-from audio_tools import SOUND_DEVICE, SOUND_DEVICES_LIST
-from audio_tools import set_sounddevice, rip_note, EMPTY_WAV
+from audio import SOUND_DEVICE, SOUND_DEVICES_LIST
+from audio import set_sounddevice, rip_note, EMPTY_WAV
+import audio
 
 from IPython import embed
 
-# Config
-from config import load_config, CONFIG
-
 # Logging
-from logger import load_logger, LOGGER
+import logger
 
+# Config
+import config 
 
 # EPILOG
 EPILOG = """
@@ -41,7 +43,7 @@ EPILOG = """
 -- MIDI DEVICES
 %s
 
-""" % ("\n".join(SOUND_DEVICES_LIST), "\n".join(MIDI_DEVICES_NAMES))
+""" % ("\n".join(SOUND_DEVICES_LIST), "\n".join(midi.DEVICES_NAMES))
 
 PARSER = ArgumentParser(formatter_class=RawDescriptionHelpFormatter, epilog=EPILOG)
 # PARSER.add_argument('--asens', default=False)  # Aftertouch Sensitive
@@ -52,58 +54,70 @@ PARSER.add_argument('--chord-mode', action='store_true')
 PARSER.add_argument('--test-mode', action='store_true')
 PARSER.add_argument('--test-volume', action='store_true')
 PARSER.add_argument('--fix-audiolink', action='store_true')
-PARSER.add_argument('--continue-on-clip', action='store_true')
+PARSER.add_argument('--ignore-clip', action='store_true')
+PARSER.add_argument('--continue-rip', action='store_true')
+
+PARSER.add_argument('--instrument', default="unknown")
+PARSER.add_argument('--patch-name', default="unknown")
 
 ARGS = PARSER.parse_args()
 print(ARGS)
 
-# Load settings from CONFIG FILE
-if not load_config(ARGS.config_file):
+# Load settings from config.CONFIG FILE
+if not config.load(ARGS.config_file):
     print("Couldn't load config file [%s]" % ARGS.config_file)
     exit(1)
 
+# Load logger
+if not logger.load():
+    print("Couldn't create logger file")
+    exit(2)
+
 # Set SOUND DEVICE
 if set_sounddevice():
-    print("SOUND-DEVICE: ", SOUND_DEVICE.default.device)
+    logger.LOGGER.info("SOUND-DEVICE: {}".format(SOUND_DEVICE.default.device))
 else:
-    print(SOUND_DEVICES_LIST)
+    logger.LOGGER.error(SOUND_DEVICES_LIST)
     exit(1)
 
 # Set MIDI DEVICE
-if set_mididevice():
-    print("MIDI DEVICE: ", MIDI_DEVICE)
+if midi.load():
+    logger.LOGGER.info("MIDI DEVICE: {}".format(midi.DEVICE))
 else:
-    print(MIDI_DEVICES_LIST)
+    logger.LOGGER.error(midi.DEVICES_LIST)
     exit(1)
 
 # Send PANIC to MIDI and wait for silence, JIC
-print("Waiting for MIDI silence at %s" % MIDI_DEVICE)
-MIDI_DEVICE.panic()
-MIDI_DEVICE.reset()
+logger.LOGGER.debug("Waiting for MIDI silence at %s" % midi.DEVICE)
+midi.DEVICE.panic()
+midi.DEVICE.reset()
 sleep(5)  # Espero
 
 #
 MIDI_NOTES = range(
-    CONFIG['midi-device'][ARGS.pitch_range]['lowest-pitch'],
-    CONFIG['midi-device'][ARGS.pitch_range]['highest-pitch'],
-    CONFIG['midi-device']['pitch-step']
+    config.CONFIG['midi-device']['pitch-ranges'][ARGS.pitch_range]['lowest-pitch'],
+    config.CONFIG['midi-device']['pitch-ranges'][ARGS.pitch_range]['highest-pitch'],
+    config.CONFIG['midi-device']['pitch-step']
 )
 
 # TODO, is this really necessary?
-RECORD_TIME = CONFIG['midi-device']['duration'] * CONFIG['sound-device']['sample-rate']
+RECORD_TIME = config.CONFIG['midi-device']['duration'] * config.CONFIG['sound']['sample-rate']
+
+FAILED = 0
 
 if ARGS.test_volume:
-    print("Testing Recording Volume --")
+    logger.LOGGER.info("Testing Recording Volume --")
     for MIDI_NOTE in [MIDI_NOTES[i] for i in range(0, len(MIDI_NOTES))]:
-        for MIDI_VEL in CONFIG['midi-device']['velocities']:
+        for MIDI_VEL in config.CONFIG['midi-device']['velocities']:
             print("Volume testing: %s (%s)" % (MIDI_NOTE, MIDI_VEL))
-            record = rip_note(SOUND_DEVICE, CONFIG['sound-device'],
-                              MIDI_DEVICE, CONFIG['midi-device'],
+            record = rip_note(SOUND_DEVICE, config.CONFIG['sound'],
+                              midi.DEVICE, config.CONFIG['midi-device'],
                               MIDI_NOTE, MIDI_VEL)
 
-            if record.min() < -0.95 or record.max() > 0.95:
+            # TODO: range should be in config file
+            if record.min() < -0.97 or record.max() > 0.97:
                 print(Fore.RED + "Recording might have clippins!" + Style.RESET_ALL)
-                if not ARGS.continue_on_clip:
+                if not ARGS.ignore_clip:
                     exit(1)
 
 elif ARGS.chord_mode:
@@ -116,26 +130,31 @@ elif ARGS.chord_mode:
                 record = SOUND_DEVICE.rec(RECORD_TIME) # Begin recording
                 sleep(0.002)
 
-            play_chord(MIDI_DEVICE, n, ACORDES[c], ARGS.sustain_time)
+            play_chord(midi.DEVICE, n, ACORDES[c], ARGS.sustain_time)
 
             sleep(ARGS.decay_time)
             SOUND_DEVICE.wait()
 
             if not ARGS.dry:
-                sf.write(FILENAME, record, CONFIG['sound-device']['sample-rate'])
+                sf.write(FILENAME, record, config.CONFIG['sound']['sample-rate'])
 else:
 
     # Por cada nota midi
-    for MIDI_NOTE in range(1, 128, 1):
+    for MIDI_NOTE in range(0, 128, 1):
 
         # Por cada velocidad
-        for MIDI_VEL in CONFIG['midi-device']['velocities']:
+        for MIDI_VEL in config.CONFIG['midi-device']['velocities']:
 
             # TODO: :
             print("Recording: note=%d velocity=%d" % (MIDI_NOTE, MIDI_VEL))
 
             FILENAME = "{tmp}/n{note:02d}-v{vel:02d}.wav"\
-                .format(tmp=CONFIG['temp-dir'], note=MIDI_NOTE, vel=MIDI_VEL)
+                .format(tmp=config.CONFIG['temp-dir'], note=MIDI_NOTE, vel=MIDI_VEL)
+
+            # Si ya existe el archivo, continuo
+            if ARGS.continue_rip and Path(FILENAME).exists():
+                logger.LOGGER.debug("{} already ripped.".format(FILENAME))
+                continue
 
             # Las notas que no me pidieron grabar, las reemplazo por un wav vacio
             if MIDI_NOTE not in MIDI_NOTES:
@@ -143,8 +162,8 @@ else:
                     copyfile(EMPTY_WAV, FILENAME)
                 continue
 
-            record = rip_note(SOUND_DEVICE, CONFIG['sound-device'],
-                              MIDI_DEVICE, CONFIG['midi-device'],
+            record = rip_note(SOUND_DEVICE, config.CONFIG['sound'],
+                              midi.DEVICE, config.CONFIG['midi-device'],
                               MIDI_NOTE, MIDI_VEL)
 
             if ARGS.fix_audiolink:  # Drop left channel
@@ -153,12 +172,16 @@ else:
             print("Recorded: {}, {}, {}".format(FILENAME, record.min(), record.max()))
 
             if not ARGS.dry:
-                sf.write(FILENAME, record, CONFIG['sound-device']['sample-rate'])
+                sf.write(FILENAME, record, config.CONFIG['sound']['sample-rate'])
             # sleep(1)
 
-            if record.min() < -0.95 or record.max() > 0.95:
-                print(Fore.RED + "Recording might have clippins!" + Style.RESET_ALL)
-                if not ARGS.continue_on_clip:
+            if not audio.check_volume(record):
+                logger.LOGGER.error(Fore.RED + "Recording might have clippins!" + Style.RESET_ALL)
+                FAILED+=1
+
+                Path(FILENAME).unlink()
+
+                if not ARGS.ignore_clip:
                     exit(1)
 
 
@@ -166,7 +189,7 @@ else:
 exit()
 
 """
-MIDI_DEVICE.reset()
+midi.DEVICE.reset()
 sleep(5)
 
 sustain = 5

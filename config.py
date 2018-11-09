@@ -4,16 +4,19 @@
 from ruamel import yaml
 
 #https://stackoverflow.com/questions/13034496/using-global-variables-between-file
+#global CONFIG
 CONFIG = None
 
 
-def load_config(file):
+def load(config_file):
     """Parses YAML config file"""
     global CONFIG
 
-    with open(file, 'r') as stream:
-        try:
+    if CONFIG is not None:
+        return
 
+    with open(config_file, 'r') as stream:
+        try:
             CONFIG = yaml.safe_load(stream)
             return True
         except yaml.YAMLError as yaml_error:

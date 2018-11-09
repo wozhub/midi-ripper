@@ -1,13 +1,15 @@
 temp-dir: /tmp/midi-ripper
-sound-device:
+sound:
   #  name: "USB Audio CODEC: - (hw:1,0)"
-  name: "Scarlett 2i4 USB: Audio (hw:1,0)"
+  device-name: "Scarlett 2i4 USB: Audio (hw:1,0)"
   channels: 2 
   sample-rate: 48000
   # sample-rate: 96000
-midi-device:
+  volume: 0.90
+  threshold: 0.09
+midi:
   # name: "JD-Xi:JD-Xi MIDI 1 24:0"
-  name: "Scarlett 2i4 USB:Scarlett 2i4 USB MIDI 1 20:0"
+  device-name: "Scarlett 2i4 USB:Scarlett 2i4 USB MIDI 1 20:0"
   # Mido numbers channels 0 to 15 instead of 1 to 16.
   # This makes them easier to work with in Python but you may want to add and subtract 1 when communicating with the user.
   channel: 0
@@ -29,4 +31,4 @@ midi-device:
   pitch-step: 1
 logger:
   name: "midi-ripper"
-  filename: "midi-ripper.log"
+  filename: "log.midi-ripper"
