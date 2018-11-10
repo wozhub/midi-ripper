@@ -5,7 +5,7 @@
 from mido import open_output, get_output_names
 
 # Audio
-#import sounddevice as SOUND_DEVICE
+#import sounddevice as audio.DEVICE
 import soundfile as sf
 from numpy import delete  # audiolink fix
 
@@ -17,17 +17,19 @@ from shutil import copyfile
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, RawDescriptionHelpFormatter
 from pathlib import Path
 
+from IPython import embed
+
 # Midi Tools
 #from midi import midi.DEVICE, midi.DEVICES_LIST, midi.DEVICES_NAMES, ACORDES, NOTAS  # Globals
 #from midi import set_mididevice, play_chord
 import midi
 
 # Audio Tools
-from audio import SOUND_DEVICE, SOUND_DEVICES_LIST
-from audio import set_sounddevice, rip_note, EMPTY_WAV
+#from audio import audio.DEVICE, audio.DEVICES_LIST
+#from audio import rip_note, EMPTY_WAV
 import audio
 
-from IPython import embed
+
 
 # Logging
 import logger
@@ -43,7 +45,7 @@ EPILOG = """
 -- MIDI DEVICES
 %s
 
-""" % ("\n".join(SOUND_DEVICES_LIST), "\n".join(midi.DEVICES_NAMES))
+""" % ("\n".join(audio.DEVICES_LIST), "\n".join(midi.DEVICES_NAMES))
 
 PARSER = ArgumentParser(formatter_class=RawDescriptionHelpFormatter, epilog=EPILOG)
 # PARSER.add_argument('--asens', default=False)  # Aftertouch Sensitive
@@ -74,10 +76,10 @@ if not logger.load():
     exit(2)
 
 # Set SOUND DEVICE
-if set_sounddevice():
-    logger.LOGGER.info("SOUND-DEVICE: {}".format(SOUND_DEVICE.default.device))
+if audio.load():
+    logger.LOGGER.info("SOUND-DEVICE: {}".format(audio.DEVICE.default.device))
 else:
-    logger.LOGGER.error(SOUND_DEVICES_LIST)
+    logger.LOGGER.error(audio.DEVICES_LIST)
     exit(1)
 
 # Set MIDI DEVICE
@@ -88,7 +90,7 @@ else:
     exit(1)
 
 # Send PANIC to MIDI and wait for silence, JIC
-logger.LOGGER.debug("Waiting for MIDI silence at %s" % midi.DEVICE)
+logger.LOGGER.info("Waiting for MIDI silence at %s" % midi.DEVICE)
 midi.DEVICE.panic()
 midi.DEVICE.reset()
 sleep(5)  # Espero
@@ -110,7 +112,7 @@ if ARGS.test_volume:
     for MIDI_NOTE in [MIDI_NOTES[i] for i in range(0, len(MIDI_NOTES))]:
         for MIDI_VEL in config.CONFIG['midi-device']['velocities']:
             print("Volume testing: %s (%s)" % (MIDI_NOTE, MIDI_VEL))
-            record = rip_note(SOUND_DEVICE, config.CONFIG['sound'],
+            record = rip_note(audio.DEVICE, config.CONFIG['sound'],
                               midi.DEVICE, config.CONFIG['midi-device'],
                               MIDI_NOTE, MIDI_VEL)
 
@@ -127,13 +129,13 @@ elif ARGS.chord_mode:
 
             print("Grabando:", FILENAME)
             if not ARGS.dry:
-                record = SOUND_DEVICE.rec(RECORD_TIME) # Begin recording
+                record = audio.DEVICE.rec(RECORD_TIME) # Begin recording
                 sleep(0.002)
 
             play_chord(midi.DEVICE, n, ACORDES[c], ARGS.sustain_time)
 
             sleep(ARGS.decay_time)
-            SOUND_DEVICE.wait()
+            audio.DEVICE.wait()
 
             if not ARGS.dry:
                 sf.write(FILENAME, record, config.CONFIG['sound']['sample-rate'])
@@ -146,7 +148,7 @@ else:
         for MIDI_VEL in config.CONFIG['midi-device']['velocities']:
 
             # TODO: :
-            print("Recording: note=%d velocity=%d" % (MIDI_NOTE, MIDI_VEL))
+            logger.LOGGER.debug("Recording: note=%d velocity=%d" % (MIDI_NOTE, MIDI_VEL))
 
             FILENAME = "{tmp}/n{note:02d}-v{vel:02d}.wav"\
                 .format(tmp=config.CONFIG['temp-dir'], note=MIDI_NOTE, vel=MIDI_VEL)
@@ -159,17 +161,15 @@ else:
             # Las notas que no me pidieron grabar, las reemplazo por un wav vacio
             if MIDI_NOTE not in MIDI_NOTES:
                 if not ARGS.dry:
-                    copyfile(EMPTY_WAV, FILENAME)
+                    copyfile(audio.EMPTY_WAV, FILENAME)
                 continue
 
-            record = rip_note(SOUND_DEVICE, config.CONFIG['sound'],
+            record = audio.rip_note(audio.DEVICE, config.CONFIG['sound'],
                               midi.DEVICE, config.CONFIG['midi-device'],
                               MIDI_NOTE, MIDI_VEL)
 
             if ARGS.fix_audiolink:  # Drop left channel
                 record = delete(record, 0, axis=1)
-
-            print("Recorded: {}, {}, {}".format(FILENAME, record.min(), record.max()))
 
             if not ARGS.dry:
                 sf.write(FILENAME, record, config.CONFIG['sound']['sample-rate'])
@@ -184,7 +184,10 @@ else:
                 if not ARGS.ignore_clip:
                     exit(1)
 
+            logger.LOGGER.info("Recorded: {}, {}, {}".format(FILENAME, record.min(), record.max()))
 
+if FAILED > 0:
+    logger.LOGGER.error("Recordings FAILED: {}/{}".format(FAILED,len(MIDI_NOTES)))
 
 exit()
 

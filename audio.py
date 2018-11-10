@@ -4,7 +4,7 @@ from os.path import dirname, realpath
 from time import sleep
 
 # Audio
-import sounddevice as SOUND_DEVICE
+import sounddevice as DEVICE
 
 
 from midi import play_note
@@ -18,25 +18,26 @@ WAIT_START = 0.002
 WAIT_END = 0.002
 
 #print(SOUND_DEVICE.query_devices()[0].get('name'))
-SOUND_DEVICES = SOUND_DEVICE.query_devices()
-SOUND_DEVICES_NAMES = [x.get('name') for x in SOUND_DEVICES]
-SOUND_DEVICES_LIST = ["%d: %s" % (SOUND_DEVICES.index(x), x.get('name')) for x in SOUND_DEVICES]
+DEVICES = DEVICE.query_devices()
+DEVICES_NAMES = [x.get('name') for x in DEVICES]
+DEVICES_LIST = ["%d: %s" % (DEVICES.index(x), x.get('name')) for x in DEVICES]
 
 
-def set_sounddevice():
+def load():
     """  See if the requested sound device is available """
     if config.CONFIG is None:
         # TODO: Should raise error
         print("Must load config first!")
         return False
 
-    if not config.CONFIG['sound']['name'] in SOUND_DEVICES_NAMES:
-        print("SOUND DEVICE NOT AVAILABLE (%s)" % config.CONFIG['sound']['name'])
+    # TODO: What if soundcard is present but in other port? IE:  (hw:2,0) instead of (hw:1,0)
+    if not config.CONFIG['sound']['device-name'] in DEVICES_NAMES:
+        print("SOUND DEVICE NOT AVAILABLE (%s)" % config.CONFIG['sound']['device-name'])
         return False
 
-    SOUND_DEVICE.default.samplerate = config.CONFIG['sound']['sample-rate']
-    SOUND_DEVICE.default.device = config.CONFIG['sound']['name']
-    SOUND_DEVICE.default.channels = 1  # Will save as ARGS.channels afterwards
+    DEVICE.default.samplerate = config.CONFIG['sound']['sample-rate']
+    DEVICE.default.device = config.CONFIG['sound']['device-name']
+    DEVICE.default.channels = 1  # Will save as ARGS.channels afterwards
 
 # Implement through config.CONFIG
 #    if ARGS.fix_audiolink:
@@ -67,11 +68,11 @@ def check_volume(record):
     peak = max(abs(record.min()), record.max())
 
     # over-volume
-    if peak > config.CONFIG['sound']['volume'] + config.CONFIG['sound']['threshold']:
+    if peak > config.CONFIG['sound']['max-peak-volume']:
         return False
 
     # under-volume
-    if peak < config.CONFIG['sound']['volume'] - config.CONFIG['sound']['threshold']:
+    if peak < config.CONFIG['sound']['min-peak-volume']:
         return False
 
     return True
